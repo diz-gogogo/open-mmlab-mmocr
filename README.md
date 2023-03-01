@@ -1,0 +1,2 @@
+# open-mmlab-mmocr
+mmocr
