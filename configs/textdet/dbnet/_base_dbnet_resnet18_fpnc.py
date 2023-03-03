@@ -13,7 +13,7 @@ model = dict(
         norm_eval=False,
         style='caffe'),
     neck=dict(
-        type='FPNC', in_channels=[64, 128, 256, 512], lateral_channels=256),
+        type='FPNC', in_channels=[128, 256, 512, 1024], lateral_channels=256),
     det_head=dict(
         type='DBHead',
         in_channels=256,

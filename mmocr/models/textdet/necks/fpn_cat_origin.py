@@ -8,7 +8,6 @@ from mmcv.cnn import ConvModule
 from mmengine.model import BaseModule, ModuleList, Sequential
 
 from mmocr.registry import MODELS
-from mmocr.models.textdet.necks.anet import ANet
 
 
 @MODELS.register_module()
@@ -38,20 +37,20 @@ class FPNC(BaseModule):
     """
 
     def __init__(
-            self,
-            in_channels: List[int],
-            lateral_channels: int = 256,
-            out_channels: int = 64,
-            bias_on_lateral: bool = False,
-            bn_re_on_lateral: bool = False,
-            bias_on_smooth: bool = False,
-            bn_re_on_smooth: bool = False,
-            asf_cfg: Optional[Dict] = None,
-            conv_after_concat: bool = False,
-            init_cfg: Optional[Union[Dict, List[Dict]]] = [
-                dict(type='Kaiming', layer='Conv'),
-                dict(type='Constant', layer='BatchNorm', val=1., bias=1e-4)
-            ]
+        self,
+        in_channels: List[int],
+        lateral_channels: int = 256,
+        out_channels: int = 64,
+        bias_on_lateral: bool = False,
+        bn_re_on_lateral: bool = False,
+        bias_on_smooth: bool = False,
+        bn_re_on_smooth: bool = False,
+        asf_cfg: Optional[Dict] = None,
+        conv_after_concat: bool = False,
+        init_cfg: Optional[Union[Dict, List[Dict]]] = [
+            dict(type='Kaiming', layer='Conv'),
+            dict(type='Constant', layer='BatchNorm', val=1., bias=1e-4)
+        ]
     ) -> None:
         super().__init__(init_cfg=init_cfg)
         assert isinstance(in_channels, list)
@@ -69,6 +68,8 @@ class FPNC(BaseModule):
 
         for i in range(self.num_ins):
 
+
+
             norm_cfg = None
             act_cfg = None
             if self.bn_re_on_lateral:
@@ -83,6 +84,7 @@ class FPNC(BaseModule):
                 norm_cfg=norm_cfg,
                 act_cfg=act_cfg,
                 inplace=False)
+
 
             norm_cfg = None
             act_cfg = None
@@ -103,6 +105,7 @@ class FPNC(BaseModule):
 
             self.lateral_convs.append(l_conv)
             self.smooth_convs.append(smooth_conv)
+
 
         if self.asf_cfg is not None:
             self.asf_conv = ConvModule(
@@ -145,74 +148,10 @@ class FPNC(BaseModule):
             Tensor: A tensor of shape :math:`(N, C_{out}, H_0, W_0)` where
             :math:`C_{out}` is ``out_channels``.
         """
-
         assert len(inputs) == len(self.in_channels)
-
-        # 修改前-------------------------------------------------------------
-        # 9: 52:28 - mmengine - INFO - Epoch(train)[1][5 / 100]
-        # memory: 2224
-        # loss: 19.0999
-        # loss_prob: 15.8469
-        # loss_thr: 2.2576
-        # loss_db: 0.9954
-        #
-        # 9: 52:28 - mmengine - INFO - Epoch(train)[1][10 / 100]
-        # memory: 556
-        # loss: 12.1458
-        # loss_prob: 9.6221
-        # loss_thr: 1.5341
-        # loss_db: 0.9896
-        #
-        # 9: 52:29 - mmengine - INFO - Epoch(train)[1][15 / 100]
-        # memory: 556
-        # loss: 5.3803
-        # loss_prob: 3.3804
-        # loss_thr: 1.0112
-        # loss_db: 0.9887
-
-        for each_in in inputs:
-            print("before", each_in.shape)
-
-        # 修改前-------------------------------------------------------------
-
-        temp_inputs = []
-
-        for each_in in inputs:
-            input_channel = each_in.size(1)
-
-            each_in = each_in.cuda()
-
-            anet_obj = ANet(input_channel).cuda()
-            out = anet_obj(each_in)
-
-            # before
-            # torch.Size([1, 64, 160, 160])
-            # before
-            # torch.Size([1, 128, 80, 80])
-            # before
-            # torch.Size([1, 256, 40, 40])
-            # before
-            # torch.Size([1, 512, 20, 20])
-            # after
-            # torch.Size([1, 128, 160, 160])
-            # after
-            # torch.Size([1, 256, 80, 80])
-            # after
-            # torch.Size([1, 512, 40, 40])
-            # after
-            # torch.Size([1, 1024, 20, 20])
-
-            temp_inputs.append(out)
-
-            print("after", out.shape)
-
-        inputs_deal = temp_inputs
-        for each_in in inputs_deal:
-            print("after - deal", each_in.shape)
         # build laterals
-
         laterals = [
-            lateral_conv(inputs_deal[i])
+            lateral_conv(inputs[i])
             for i, lateral_conv in enumerate(self.lateral_convs)
         ]
 
@@ -229,9 +168,12 @@ class FPNC(BaseModule):
             for i in range(used_backbone_levels)
         ]
 
+
         for i, out in enumerate(outs):
             outs[i] = F.interpolate(
                 outs[i], size=outs[0].shape[2:], mode='nearest')
+
+
 
         out = torch.cat(outs, dim=1)
 
@@ -245,6 +187,7 @@ class FPNC(BaseModule):
 
         if self.conv_after_concat:
             out = self.out_conv(out)
+
 
         return out
 
@@ -263,13 +206,13 @@ class ScaleChannelSpatialAttention(BaseModule):
     """
 
     def __init__(
-            self,
-            in_channels: int,
-            c_wise_channels: int,
-            out_channels: int,
-            init_cfg: Optional[Union[Dict, List[Dict]]] = [
-                dict(type='Kaiming', layer='Conv', bias=0)
-            ]
+        self,
+        in_channels: int,
+        c_wise_channels: int,
+        out_channels: int,
+        init_cfg: Optional[Union[Dict, List[Dict]]] = [
+            dict(type='Kaiming', layer='Conv', bias=0)
+        ]
     ) -> None:
         super().__init__(init_cfg=init_cfg)
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
